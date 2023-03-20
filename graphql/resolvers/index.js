@@ -3,18 +3,34 @@ const bcrypt = require("bcryptjs");
 const Event = require("../../models/event.model");
 const User = require("../../models/user.model");
 const Booking = require("../../models/booking.model");
+const { dateToString } = require("../../helpers/date");
+
+const transformEvent = (event) => {
+  return {
+    ...event.toObject(),
+    date: new Date(event.date).toISOString(),
+    creator: user.bind(this, event.creator),
+  };
+};
+
+const transformBooking = (booking) => {
+  return {
+    ...booking.toObject(),
+    createdAt: dateToString(booking.createdAt),
+    updatedAt: dateToString(booking.updatedAt),
+    user: user.bind(this, booking.user),
+    event: singleEvent.bind(this, booking.event),
+  };
+};
 
 const events = async (eventIds) => {
   try {
-    const events = await Event.find({ _id: { $in: eventIds } }).lean();
+    const events = await Event.find({ _id: { $in: eventIds } });
     return events.map((event) => {
-      return {
-        ...event,
-        date: new Date(event.date).toISOString(),
-        creator: user.bind(this, event.creator),
-      };
+      return transformEvent(event);
     });
   } catch (error) {
+    console.log(error);
     throw error;
   }
 };
@@ -22,13 +38,9 @@ const events = async (eventIds) => {
 const singleEvent = async (eventId) => {
   try {
     const event = await Event.findById(eventId);
-
-    return {
-      ...event.toObject(),
-      date: new Date(event.date).toISOString(),
-      creator: user.bind(this, event.creator),
-    };
+    return transformEvent(event);
   } catch (error) {
+    console.log(error);
     throw error;
   }
 };
@@ -42,6 +54,7 @@ const user = async (userId) => {
       createdEvents: events.bind(this, user.createdEvents),
     };
   } catch (error) {
+    console.log(error);
     throw error;
   }
 };
@@ -49,13 +62,9 @@ const user = async (userId) => {
 module.exports = {
   events: async () => {
     try {
-      const events = await Event.find().lean(); // .populate("creator")
+      const events = await Event.find(); // .populate("creator")
       return events.map((event) => {
-        return {
-          ...event,
-          date: new Date(event.date).toISOString(),
-          creator: user.bind(this, event.creator),
-        };
+        return transformEvent(event);
       });
     } catch (error) {
       console.log(error);
@@ -64,15 +73,9 @@ module.exports = {
   },
   bookings: async () => {
     try {
-      const bookings = await Booking.find().lean();
+      const bookings = await Booking.find();
       return bookings.map((booking) => {
-        return {
-          ...booking,
-          createdAt: new Date(booking.createdAt).toISOString(),
-          updatedAt: new Date(booking.updatedAt).toISOString(),
-          user: user.bind(this, booking.user),
-          event: singleEvent.bind(this, booking.event),
-        };
+        return transformBooking(booking);
       });
     } catch (error) {
       console.log(error);
@@ -98,12 +101,7 @@ module.exports = {
       await existingUser.save();
 
       let createdEvent = await event.save();
-
-      return {
-        ...createdEvent.toObject(),
-        date: new Date(createdEvent.date).toISOString(),
-        creator: user.bind(this, createdEvent.creator),
-      };
+      return transformEvent(createdEvent);
     } catch (error) {
       console.log(error);
       throw error;
@@ -143,14 +141,7 @@ module.exports = {
         event: args.eventId,
       });
       const result = await booking.save();
-      console.log(result);
-      return {
-        ...result.toObject(),
-        createdAt: new Date(result.createdAt).toISOString(),
-        updatedAt: new Date(result.updatedAt).toISOString(),
-        user: user.bind(this, result.user),
-        event: singleEvent.bind(this, result.event),
-      };
+      return transformBooking(result);
     } catch (error) {
       console.log(error);
       throw error;
@@ -158,19 +149,15 @@ module.exports = {
   },
   cancelBooking: async (args) => {
     try {
-      const booking = await Booking.findById(args.bookingId)
-        .populate("event")
-        .lean();
+      const booking = await Booking.findById(args.bookingId).populate("event");
 
       if (!booking) {
         throw new Error("Booking does not exist");
       }
 
-      const event = {
-        ...booking.event,
-        creator: user.bind(this, booking.user),
-      };
+      const event = transformEvent(booking.event);
       await Booking.deleteOne({ _id: args.bookingId });
+
       return event;
     } catch (error) {
       console.log(error);
