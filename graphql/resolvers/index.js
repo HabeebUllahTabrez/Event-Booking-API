@@ -3,28 +3,49 @@ const bcrypt = require("bcryptjs");
 const Event = require("../../models/event.model");
 const User = require("../../models/user.model");
 
-// const user = async (userId) => {
-//   try {
-//     let user = await User.findById(userId);
-//     return user;
-//   } catch (error) {
-//     throw error;
-//   }
-// };
+const events = async (eventIds) => {
+  try {
+    const events = await Event.find({ _id: { $in: eventIds } }).lean();
+    return events.map((event) => {
+      return {
+        ...event,
+        date: new Date(event.date).toISOString(),
+        creator: user.bind(this, event.creator),
+      };
+    });
+  } catch (error) {
+    throw error;
+  }
+};
 
+const user = async (userId) => {
+  try {
+    let user = await User.findById(userId);
+    return {
+      ...user.toObject(),
+      password: null,
+      createdEvents: events.bind(this, user.createdEvents),
+    };
+  } catch (error) {
+    throw error;
+  }
+};
 
 module.exports = {
-  events: () => {
-    return Event.find()
-      .populate("creator")
-      .lean()
-      .then((events) => {
-        return events;
-      })
-      .catch((err) => {
-        console.log(err);
-        throw error;
+  events: async () => {
+    try {
+      const events = await Event.find().lean(); // .populate("creator")
+      return events.map((event) => {
+        return {
+          ...event,
+          date: new Date(event.date).toISOString(),
+          creator: user.bind(this, event.creator),
+        };
       });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   },
   createEvent: async (args) => {
     try {
@@ -36,17 +57,21 @@ module.exports = {
         creator: "64183034b725e37ed82657ac",
       });
 
-      let user = await User.findById(event.creator);
-      if (!user) {
+      let existingUser = await User.findById(event.creator);
+      if (!existingUser) {
         throw new Error("User doesnt exist");
       }
 
-      user.createdEvents.push(event);
-      await user.save();
+      existingUser.createdEvents.push(event);
+      await existingUser.save();
 
-      let response = await event.save();
+      let createdEvent = await event.save();
 
-      return response;
+      return {
+        ...createdEvent.toObject(),
+        date: new Date(createdEvent.date).toISOString(),
+        creator: user.bind(this, createdEvent.creator),
+      };
     } catch (error) {
       console.log(error);
       throw error;
@@ -54,23 +79,25 @@ module.exports = {
   },
   createUser: async (args) => {
     try {
-      let user = await User.findOne({ email: args.userInput.email });
-      if (user) {
+      let existingUser = await User.findOne({ email: args.userInput.email });
+      if (existingUser) {
         throw new Error("User already exist");
       }
 
-      let result;
       let hashedPassword = bcrypt.hashSync(args.userInput.password, 12);
 
-      user = new User({
+      existingUser = new User({
         email: args.userInput.email,
         password: hashedPassword,
       });
 
-      result = await user.save();
-      result.password = null;
+      let result = await existingUser.save();
 
-      return result;
+      return {
+        ...result.toObject(),
+        password: null,
+        createdEvents: events.bind(this, user.createdEvents),
+      };
     } catch (error) {
       console.log(error);
       throw error;
