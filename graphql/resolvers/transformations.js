@@ -2,7 +2,7 @@ const Event = require("../../models/event.model");
 const User = require("../../models/user.model");
 const { dateToString } = require("../../helpers/date");
 
-exports.transformEvent = (event) => {
+transformEvent = (event) => {
   return {
     ...event.toObject(),
     date: dateToString(event.date),
@@ -10,7 +10,7 @@ exports.transformEvent = (event) => {
   };
 };
 
-exports.transformBooking = (booking) => {
+transformBooking = (booking) => {
   return {
     ...booking.toObject(),
     createdAt: dateToString(booking.createdAt),
@@ -20,7 +20,7 @@ exports.transformBooking = (booking) => {
   };
 };
 
-exports.events = async (eventIds) => {
+events = async (eventIds) => {
   try {
     const events = await Event.find({ _id: { $in: eventIds } });
     return events.map((event) => {
@@ -32,7 +32,7 @@ exports.events = async (eventIds) => {
   }
 };
 
-exports.singleEvent = async (eventId) => {
+singleEvent = async (eventId) => {
   try {
     const event = await Event.findById(eventId);
     return transformEvent(event);
@@ -42,7 +42,7 @@ exports.singleEvent = async (eventId) => {
   }
 };
 
-exports.user = async (userId) => {
+user = async (userId) => {
   try {
     let user = await User.findById(userId);
     return {
@@ -55,3 +55,7 @@ exports.user = async (userId) => {
     throw error;
   }
 };
+
+exports.transformEvent = transformEvent;
+exports.transformBooking = transformBooking;
+exports.events = events;
