@@ -37,6 +37,12 @@ function App() {
             {!token && (
               <Route path="/" element={<Navigate replace to="/auth" />}></Route>
             )}
+            {!token && (
+              <Route
+                path="/bookings"
+                element={<Navigate replace to="/auth" />}
+              ></Route>
+            )}
             {token && (
               <Route
                 path="/"
